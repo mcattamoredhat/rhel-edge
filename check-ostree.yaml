@@ -681,6 +681,20 @@
           set_fact:
             failed_counter: "{{ failed_counter | int + 1 }}"
 
+    # case: insert log entries to journal
+    - name: insert test entry log to persistent journal
+      block:
+        - name: connect stdin to journal and write test log
+          command: echo 'this is a test log message' | systemd-cat -p emerg
+          register: result_echo_journal
+      always:
+        - set_fact:
+            total_counter: "{{ total_counter | int + 1 }}"
+      rescue:
+        - name: failed count + 1
+          set_fact:
+            failed_counter: "{{ failed_counter | int + 1 }}"
+
     # case: check rollback function if boot error found
     - name: install sanely failing health check unit to test red boot status behavior
       block:
@@ -799,6 +813,27 @@
           set_fact:
             failed_counter: "{{ failed_counter | int + 1 }}"
       when: result_rollback is succeeded
+
+    # case: check journal persistent logs
+    - name: check systemd-journald persistency
+      block:
+        - name: check log entry after reboot
+          shell: journalctl | grep cat
+          register: result_journal_log
+          become: yes
+
+        - assert:
+            that:
+              - "'this is a test log message' in result_journal_log.stdout"
+            fail_msg: "Persistent log entry not found after reboot"
+            success_msg: "Persistent log entry found after reboot"
+      always:
+        - set_fact:
+            total_counter: "{{ total_counter | int + 1 }}"
+      rescue:
+        - name: failed count + 1
+          set_fact:
+            failed_counter: "{{ failed_counter | int + 1 }}"
 
     - assert:
         that:
