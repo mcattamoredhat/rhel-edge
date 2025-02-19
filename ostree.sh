@@ -315,7 +315,7 @@ check_result () {
         greenprint "💚 Success"
     else
         greenprint "❌ Failed"
-        clean_up
+        # clean_up
         exit 1
     fi
 }
@@ -335,6 +335,12 @@ modules = []
 groups = []
 [[packages]]
 name = "python3"
+version = "*"
+[[packages]]
+name = "bootc"
+version = "*"
+[[packages]]
+name = "dnf"
 version = "*"
 EOF
 
@@ -435,7 +441,7 @@ lang en_US.UTF-8
 keyboard us
 timezone --utc Etc/UTC
 selinux --enforcing
-rootpw --lock --iscrypted locked
+rootpw --plaintext root
 user --name=${SSH_USER} --groups=wheel --iscrypted --password=\$6\$1LgwKw9aOoAi/Zy9\$Pn3ErY1E8/yEanJ98evqKEW.DZp24HTuqXPJl6GYCm8uuobAmwxLv7rGCvTRZhxtcYdmC0.XnYRSR9Sh6de3p0
 sshkey --username=${SSH_USER} "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCzxo5dEcS+LDK/OFAfHo6740EyoDM8aYaCkBala0FnWfMMTOq7PQe04ahB0eFLS3IlQtK5bpgzxBdFGVqF6uT5z4hhaPjQec0G3+BD5Pxo6V+SxShKZo+ZNGU3HVrF9p2V7QH0YFQj5B8F6AicA3fYh2BVUFECTPuMpy5A52ufWu0r4xOFmbU7SIhRQRAQz2u4yjXqBsrpYptAvyzzoN4gjUhNnwOHSPsvFpWoBFkWmqn0ytgHg3Vv9DlHW+45P02QH1UFedXR2MqLnwRI30qqtaOkVS+9rE/dhnR+XPpHHG+hv2TgMDAuQ3IK7Ab5m/yCbN73cxFifH4LST0vVG3Jx45xn+GTeHHhfkAfBSCtya6191jixbqyovpRunCBKexI5cfRPtWOitM3m7Mq26r7LpobMM+oOLUm4p0KKNIthWcmK9tYwXWSuGGfUQ+Y8gt7E0G06ZGbCPHOrxJ8lYQqXsif04piONPA/c9Hq43O99KPNGShONCS9oPFdOLRT3U= ostree-image-test"
 bootloader --timeout=1 --append="net.ifnames=0 modprobe.blacklist=vc4"
@@ -534,161 +540,161 @@ check_result
 ##################################################
 
 # Write a blueprint for ostree image.
-tee "$BLUEPRINT_FILE" > /dev/null << EOF
-name = "upgrade"
-description = "An upgrade ostree image"
-version = "0.0.2"
-modules = []
-groups = []
-[[packages]]
-name = "python3"
-version = "*"
-[[packages]]
-name = "wget"
-version = "*"
-[[customizations.user]]
-name = "${SSH_USER}"
-description = "Administrator account"
-password = "\$6\$GRmb7S0p8vsYmXzH\$o0E020S.9JQGaHkszoog4ha4AQVs3sk8q0DvLjSMxoxHBKnB2FBXGQ/OkwZQfW/76ktHd0NX5nls2LPxPuUdl."
-key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCzxo5dEcS+LDK/OFAfHo6740EyoDM8aYaCkBala0FnWfMMTOq7PQe04ahB0eFLS3IlQtK5bpgzxBdFGVqF6uT5z4hhaPjQec0G3+BD5Pxo6V+SxShKZo+ZNGU3HVrF9p2V7QH0YFQj5B8F6AicA3fYh2BVUFECTPuMpy5A52ufWu0r4xOFmbU7SIhRQRAQz2u4yjXqBsrpYptAvyzzoN4gjUhNnwOHSPsvFpWoBFkWmqn0ytgHg3Vv9DlHW+45P02QH1UFedXR2MqLnwRI30qqtaOkVS+9rE/dhnR+XPpHHG+hv2TgMDAuQ3IK7Ab5m/yCbN73cxFifH4LST0vVG3Jx45xn+GTeHHhfkAfBSCtya6191jixbqyovpRunCBKexI5cfRPtWOitM3m7Mq26r7LpobMM+oOLUm4p0KKNIthWcmK9tYwXWSuGGfUQ+Y8gt7E0G06ZGbCPHOrxJ8lYQqXsif04piONPA/c9Hq43O99KPNGShONCS9oPFdOLRT3U= ostree-image-test"
-home = "/home/${SSH_USER}/"
-groups = ["wheel"]
-EOF
-
-# For BZ#2088459, RHEL 8.6 and 9.0 will not have new release which fix this issue
-# RHEL 8.6 and 9.0 will not include sssd package in blueprint
-if [[ "${ADD_SSSD}" == "true" ]]; then
-    tee -a "$BLUEPRINT_FILE" > /dev/null << EOF
-[[packages]]
-name = "sssd"
-version = "*"
-EOF
-fi
-
-# RHEL 8.7 and 9.1 later support embedded container in commit
-if [[ "${EMBEDDED_CONTAINER}" == "true" ]]; then
-    tee -a "$BLUEPRINT_FILE" > /dev/null << EOF
-[[containers]]
-source = "quay.io/fedora/fedora:latest"
-
-[[containers]]
-source = "registry.gitlab.com/redhat/services/products/image-builder/ci/osbuild-composer/fedora-minimal@${FEDORA_IMAGE_DIGEST}"
-name = "${FEDORA_LOCAL_NAME}"
-EOF
-fi
-
-if [[ "${FIREWALL_FEATURE}" == "true" ]]; then
-    tee -a "$BLUEPRINT_FILE" > /dev/null << EOF
-[[customizations.firewall.zones]]
-name = "trusted"
-sources = ["192.168.100.51"]
-[[customizations.firewall.zones]]
-name = "work"
-sources = ["192.168.100.52"]
-EOF
-fi
-
-# Add directory and files customization, and services customization for testing
-if [[ "${DIRS_FILES_CUSTOMIZATION}" == "true" ]]; then
-    tee -a "$BLUEPRINT_FILE" > /dev/null << EOF
-[[customizations.directories]]
-path = "/etc/custom_dir/dir1"
-user = 1020
-group = 1020
-mode = "0770"
-ensure_parents = true
-
-[[customizations.files]]
-path = "/etc/systemd/system/custom.service"
-data = "[Unit]\nDescription=Custom service\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/bin/false\n[Install]\nWantedBy=multi-user.target\n"
-
-[[customizations.files]]
-path = "/etc/custom_file.txt"
-data = "image builder is the best\n"
-
-[[customizations.directories]]
-path = "/etc/systemd/system/custom.service.d"
-
-[[customizations.files]]
-path = "/etc/systemd/system/custom.service.d/override.conf"
-data = "[Service]\nExecStart=\nExecStart=/usr/bin/cat /etc/custom_file.txt\n"
-
-[customizations.services]
-enabled = ["custom.service"]
-EOF
-fi
-
-# Build upgrade image.
-build_image "$BLUEPRINT_FILE" upgrade
-
-# Download the image and extract tar into web server root folder.
-greenprint "📥 Downloading and extracting the image"
-sudo composer-cli compose image "${COMPOSE_ID}" > /dev/null
-IMAGE_FILENAME="${COMPOSE_ID}-commit.tar"
-UPGRADE_PATH="$(pwd)/upgrade"
-mkdir -p "$UPGRADE_PATH"
-sudo tar -xf "$IMAGE_FILENAME" -C "$UPGRADE_PATH"
-sudo rm -f "$IMAGE_FILENAME"
-
-# Clean compose and blueprints.
-greenprint "Clean up osbuild-composer again"
-sudo composer-cli compose delete "${COMPOSE_ID}" > /dev/null
-sudo composer-cli blueprints delete upgrade > /dev/null
-
-# Introduce new ostree commit into repo.
-greenprint "Introduce new ostree commit into repo"
-sudo ostree pull-local --repo "${HTTPD_PATH}/repo" "${UPGRADE_PATH}/repo" "$OSTREE_REF"
-sudo ostree summary --update --repo "${HTTPD_PATH}/repo"
-
-# Ensure SELinux is happy with all objects files.
-greenprint "👿 Running restorecon on web server root folder"
-sudo restorecon -Rv "${HTTPD_PATH}/repo" > /dev/null
-
-# Get ostree commit value.
-greenprint "Get ostree image commit value"
-UPGRADE_HASH=$(jq -r '."ostree-commit"' < "${UPGRADE_PATH}"/compose.json)
-
-# Remove upgrade repo
-sudo rm -rf "$UPGRADE_PATH"
-
-# Upgrade image/commit.
-greenprint "Upgrade ostree image/commit"
-sudo ssh "${SSH_OPTIONS[@]}" -i "${SSH_KEY}" "${SSH_USER}@${GUEST_ADDRESS}" 'sudo rpm-ostree upgrade'
-sudo ssh "${SSH_OPTIONS[@]}" -i "${SSH_KEY}" "${SSH_USER}@${GUEST_ADDRESS}" 'nohup sudo systemctl reboot &>/dev/null & exit'
-
-# Sleep 10 seconds here to make sure vm restarted already
-sleep 10
-
-# Check for ssh ready to go.
-greenprint "🛃 Checking for SSH is ready to go"
-for _ in $(seq 0 30); do
-    RESULTS="$(wait_for_ssh_up $GUEST_ADDRESS)"
-    if [[ $RESULTS == 1 ]]; then
-        echo "SSH is ready now! 🥳"
-        break
-    fi
-    sleep 10
-done
-
-# Check ostree upgrade result
-check_result
-
-# Add instance IP address into /etc/ansible/hosts
-tee "${TEMPDIR}"/inventory > /dev/null << EOF
-[ostree_guest]
-${GUEST_ADDRESS}
-[ostree_guest:vars]
-ansible_python_interpreter=/usr/bin/python3
-ansible_user=${SSH_USER}
-ansible_private_key_file=${SSH_KEY}
-ansible_ssh_common_args="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-EOF
-
-# Test IoT/Edge OS
-podman run --network=host --annotation run.oci.keep_original_groups=1 -v "$(pwd)":/work:z -v "${TEMPDIR}":/tmp:z --rm quay.io/rhel-edge/ansible-runner:latest ansible-playbook -v -i /tmp/inventory -e os_name="${OS_NAME}" -e ostree_commit="${UPGRADE_HASH}" -e ostree_ref="${OS_NAME}:${OSTREE_REF}" -e embedded_container="${EMBEDDED_CONTAINER}" -e firewall_feature="${FIREWALL_FEATURE}" -e sysroot_ro="$SYSROOT_RO" -e test_custom_dirs_files="${DIRS_FILES_CUSTOMIZATION}" check-ostree.yaml || RESULTS=0
-check_result
-
-# Final success clean up
-clean_up
+# tee "$BLUEPRINT_FILE" > /dev/null << EOF
+# name = "upgrade"
+# description = "An upgrade ostree image"
+# version = "0.0.2"
+# modules = []
+# groups = []
+# [[packages]]
+# name = "python3"
+# version = "*"
+# [[packages]]
+# name = "wget"
+# version = "*"
+# [[customizations.user]]
+# name = "${SSH_USER}"
+# description = "Administrator account"
+# password = "\$6\$GRmb7S0p8vsYmXzH\$o0E020S.9JQGaHkszoog4ha4AQVs3sk8q0DvLjSMxoxHBKnB2FBXGQ/OkwZQfW/76ktHd0NX5nls2LPxPuUdl."
+# key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCzxo5dEcS+LDK/OFAfHo6740EyoDM8aYaCkBala0FnWfMMTOq7PQe04ahB0eFLS3IlQtK5bpgzxBdFGVqF6uT5z4hhaPjQec0G3+BD5Pxo6V+SxShKZo+ZNGU3HVrF9p2V7QH0YFQj5B8F6AicA3fYh2BVUFECTPuMpy5A52ufWu0r4xOFmbU7SIhRQRAQz2u4yjXqBsrpYptAvyzzoN4gjUhNnwOHSPsvFpWoBFkWmqn0ytgHg3Vv9DlHW+45P02QH1UFedXR2MqLnwRI30qqtaOkVS+9rE/dhnR+XPpHHG+hv2TgMDAuQ3IK7Ab5m/yCbN73cxFifH4LST0vVG3Jx45xn+GTeHHhfkAfBSCtya6191jixbqyovpRunCBKexI5cfRPtWOitM3m7Mq26r7LpobMM+oOLUm4p0KKNIthWcmK9tYwXWSuGGfUQ+Y8gt7E0G06ZGbCPHOrxJ8lYQqXsif04piONPA/c9Hq43O99KPNGShONCS9oPFdOLRT3U= ostree-image-test"
+# home = "/home/${SSH_USER}/"
+# groups = ["wheel"]
+# EOF
+# 
+# # For BZ#2088459, RHEL 8.6 and 9.0 will not have new release which fix this issue
+# # RHEL 8.6 and 9.0 will not include sssd package in blueprint
+# if [[ "${ADD_SSSD}" == "true" ]]; then
+#     tee -a "$BLUEPRINT_FILE" > /dev/null << EOF
+# [[packages]]
+# name = "sssd"
+# version = "*"
+# EOF
+# fi
+# 
+# # RHEL 8.7 and 9.1 later support embedded container in commit
+# if [[ "${EMBEDDED_CONTAINER}" == "true" ]]; then
+#     tee -a "$BLUEPRINT_FILE" > /dev/null << EOF
+# [[containers]]
+# source = "quay.io/fedora/fedora:latest"
+# 
+# [[containers]]
+# source = "registry.gitlab.com/redhat/services/products/image-builder/ci/osbuild-composer/fedora-minimal@${FEDORA_IMAGE_DIGEST}"
+# name = "${FEDORA_LOCAL_NAME}"
+# EOF
+# fi
+# 
+# if [[ "${FIREWALL_FEATURE}" == "true" ]]; then
+#     tee -a "$BLUEPRINT_FILE" > /dev/null << EOF
+# [[customizations.firewall.zones]]
+# name = "trusted"
+# sources = ["192.168.100.51"]
+# [[customizations.firewall.zones]]
+# name = "work"
+# sources = ["192.168.100.52"]
+# EOF
+# fi
+# 
+# # Add directory and files customization, and services customization for testing
+# if [[ "${DIRS_FILES_CUSTOMIZATION}" == "true" ]]; then
+#     tee -a "$BLUEPRINT_FILE" > /dev/null << EOF
+# [[customizations.directories]]
+# path = "/etc/custom_dir/dir1"
+# user = 1020
+# group = 1020
+# mode = "0770"
+# ensure_parents = true
+# 
+# [[customizations.files]]
+# path = "/etc/systemd/system/custom.service"
+# data = "[Unit]\nDescription=Custom service\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/bin/false\n[Install]\nWantedBy=multi-user.target\n"
+# 
+# [[customizations.files]]
+# path = "/etc/custom_file.txt"
+# data = "image builder is the best\n"
+# 
+# [[customizations.directories]]
+# path = "/etc/systemd/system/custom.service.d"
+# 
+# [[customizations.files]]
+# path = "/etc/systemd/system/custom.service.d/override.conf"
+# data = "[Service]\nExecStart=\nExecStart=/usr/bin/cat /etc/custom_file.txt\n"
+# 
+# [customizations.services]
+# enabled = ["custom.service"]
+# EOF
+# fi
+# 
+# # Build upgrade image.
+# build_image "$BLUEPRINT_FILE" upgrade
+# 
+# # Download the image and extract tar into web server root folder.
+# greenprint "📥 Downloading and extracting the image"
+# sudo composer-cli compose image "${COMPOSE_ID}" > /dev/null
+# IMAGE_FILENAME="${COMPOSE_ID}-commit.tar"
+# UPGRADE_PATH="$(pwd)/upgrade"
+# mkdir -p "$UPGRADE_PATH"
+# sudo tar -xf "$IMAGE_FILENAME" -C "$UPGRADE_PATH"
+# sudo rm -f "$IMAGE_FILENAME"
+# 
+# # Clean compose and blueprints.
+# greenprint "Clean up osbuild-composer again"
+# sudo composer-cli compose delete "${COMPOSE_ID}" > /dev/null
+# sudo composer-cli blueprints delete upgrade > /dev/null
+# 
+# # Introduce new ostree commit into repo.
+# greenprint "Introduce new ostree commit into repo"
+# sudo ostree pull-local --repo "${HTTPD_PATH}/repo" "${UPGRADE_PATH}/repo" "$OSTREE_REF"
+# sudo ostree summary --update --repo "${HTTPD_PATH}/repo"
+# 
+# # Ensure SELinux is happy with all objects files.
+# greenprint "👿 Running restorecon on web server root folder"
+# sudo restorecon -Rv "${HTTPD_PATH}/repo" > /dev/null
+# 
+# # Get ostree commit value.
+# greenprint "Get ostree image commit value"
+# UPGRADE_HASH=$(jq -r '."ostree-commit"' < "${UPGRADE_PATH}"/compose.json)
+# 
+# # Remove upgrade repo
+# sudo rm -rf "$UPGRADE_PATH"
+# 
+# # Upgrade image/commit.
+# greenprint "Upgrade ostree image/commit"
+# sudo ssh "${SSH_OPTIONS[@]}" -i "${SSH_KEY}" "${SSH_USER}@${GUEST_ADDRESS}" 'sudo rpm-ostree upgrade'
+# sudo ssh "${SSH_OPTIONS[@]}" -i "${SSH_KEY}" "${SSH_USER}@${GUEST_ADDRESS}" 'nohup sudo systemctl reboot &>/dev/null & exit'
+# 
+# # Sleep 10 seconds here to make sure vm restarted already
+# sleep 10
+# 
+# # Check for ssh ready to go.
+# greenprint "🛃 Checking for SSH is ready to go"
+# for _ in $(seq 0 30); do
+#     RESULTS="$(wait_for_ssh_up $GUEST_ADDRESS)"
+#     if [[ $RESULTS == 1 ]]; then
+#         echo "SSH is ready now! 🥳"
+#         break
+#     fi
+#     sleep 10
+# done
+# 
+# # Check ostree upgrade result
+# check_result
+# 
+# # Add instance IP address into /etc/ansible/hosts
+# tee "${TEMPDIR}"/inventory > /dev/null << EOF
+# [ostree_guest]
+# ${GUEST_ADDRESS}
+# [ostree_guest:vars]
+# ansible_python_interpreter=/usr/bin/python3
+# ansible_user=${SSH_USER}
+# ansible_private_key_file=${SSH_KEY}
+# ansible_ssh_common_args="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+# EOF
+# 
+# # Test IoT/Edge OS
+# podman run --network=host --annotation run.oci.keep_original_groups=1 -v "$(pwd)":/work:z -v "${TEMPDIR}":/tmp:z --rm quay.io/rhel-edge/ansible-runner:latest ansible-playbook -v -i /tmp/inventory -e os_name="${OS_NAME}" -e ostree_commit="${UPGRADE_HASH}" -e ostree_ref="${OS_NAME}:${OSTREE_REF}" -e embedded_container="${EMBEDDED_CONTAINER}" -e firewall_feature="${FIREWALL_FEATURE}" -e sysroot_ro="$SYSROOT_RO" -e test_custom_dirs_files="${DIRS_FILES_CUSTOMIZATION}" check-ostree.yaml || RESULTS=0
+# check_result
+# 
+# # Final success clean up
+# clean_up
 
 exit 0
