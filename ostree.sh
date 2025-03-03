@@ -448,7 +448,10 @@ bootloader --timeout=1 --append="net.ifnames=0 modprobe.blacklist=vc4"
 network --bootproto=dhcp --device=link --activate --onboot=on
 zerombr
 clearpart --all --initlabel --disklabel=msdos
-autopart --nohome --noswap --type=plain
+part /boot --fstype=ext3 --size=200
+part pv.01 --size=1000 --grow --encrypted --passphrase=password
+volgroup myvg pv.01
+logvol / --vgname=myvg --name=rootvol --size=1000 --grow
 ostreesetup --nogpg --osname=${OS_NAME} --remote=${OS_NAME} --url=http://192.168.100.1/repo/ --ref=${OSTREE_REF}
 poweroff
 %post --log=/var/log/anaconda/post-install.log --erroronfail
