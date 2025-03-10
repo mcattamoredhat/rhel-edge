@@ -42,43 +42,43 @@ sudo localectl set-locale LANG=en_US.UTF-8
 
 # Install required packages
 greenprint "Install required packages"
-sudo dnf install -y --nogpgcheck httpd osbuild osbuild-composer composer-cli podman skopeo wget firewalld lorax xorriso curl jq expect qemu-img qemu-kvm libvirt-client libvirt-daemon-kvm libvirt-daemon virt-install rpmdevtools createrepo_c
+sudo dnf install -y --nogpgcheck httpd podman skopeo wget firewalld lorax xorriso curl jq expect qemu-img qemu-kvm libvirt-client libvirt-daemon-kvm libvirt-daemon virt-install rpmdevtools createrepo_c
 
 # Customize repository
 sudo mkdir -p /etc/osbuild-composer/repositories
 
-case "${ID}-${VERSION_ID}" in
-    "rhel-8.10")
-        sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-8-10-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-810.json > /dev/null;;
-    "rhel-9.4")
-        sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-8-10-0-sha512.json | sudo tee /etc/osbuild-composer/repositories/rhel-810.json > /dev/null
-        sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-9-3-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-93.json > /dev/null
-        sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-9-4-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-94.json > /dev/null;;
-    "rhel-9.5")
-        sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-8-10-0-sha512.json | sudo tee /etc/osbuild-composer/repositories/rhel-810.json > /dev/null
-        sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-9-4-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-94.json > /dev/null
-        sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-9-5-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-95.json > /dev/null;;
-    "rhel-9.6")
-        sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-8-10-0-sha512.json | sudo tee /etc/osbuild-composer/repositories/rhel-810.json > /dev/null
-        sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-9-5-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-95.json > /dev/null
-        sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-9-6-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-96.json > /dev/null;;
-    "centos-9")
-        sudo cp files/centos-stream-9.json /etc/osbuild-composer/repositories/centos-9.json;;
-    "centos-10")
-        sudo cp files/centos-stream-10.json /etc/osbuild-composer/repositories/centos-10.json;;
-    "fedora-41")
-        sudo cp files/fedora-41.json /etc/osbuild-composer/repositories/fedora-41.json
-        ;;
-    "fedora-42")
-        sudo cp files/fedora-42.json /etc/osbuild-composer/repositories/fedora-42.json
-        ;;
-    "fedora-43")
-        sudo cp files/fedora-43.json /etc/osbuild-composer/repositories/fedora-43.json
-        ;;
-    *)
-        echo "unsupported distro: ${ID}-${VERSION_ID}"
-        exit 1;;
-esac
+# case "${ID}-${VERSION_ID}" in
+#     "rhel-8.10")
+#         sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-8-10-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-810.json > /dev/null;;
+#     "rhel-9.4")
+#         sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-8-10-0-sha512.json | sudo tee /etc/osbuild-composer/repositories/rhel-810.json > /dev/null
+#         sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-9-3-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-93.json > /dev/null
+#         sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-9-4-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-94.json > /dev/null;;
+#     "rhel-9.5")
+#         sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-8-10-0-sha512.json | sudo tee /etc/osbuild-composer/repositories/rhel-810.json > /dev/null
+#         sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-9-4-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-94.json > /dev/null
+#         sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-9-5-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-95.json > /dev/null;;
+#     "rhel-9.6")
+#         sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-8-10-0-sha512.json | sudo tee /etc/osbuild-composer/repositories/rhel-810.json > /dev/null
+#         sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-9-5-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-95.json > /dev/null
+#         sed "s/REPLACE_ME_HERE/${DOWNLOAD_NODE}/g" files/rhel-9-6-0.json | sudo tee /etc/osbuild-composer/repositories/rhel-96.json > /dev/null;;
+#     "centos-9")
+#         sudo cp files/centos-stream-9.json /etc/osbuild-composer/repositories/centos-9.json;;
+#     "centos-10")
+#         sudo cp files/centos-stream-10.json /etc/osbuild-composer/repositories/centos-10.json;;
+#     "fedora-41")
+#         sudo cp files/fedora-41.json /etc/osbuild-composer/repositories/fedora-41.json
+#         ;;
+#     "fedora-42")
+#         sudo cp files/fedora-42.json /etc/osbuild-composer/repositories/fedora-42.json
+#         ;;
+#     "fedora-43")
+#         sudo cp files/fedora-43.json /etc/osbuild-composer/repositories/fedora-43.json
+#         ;;
+#     *)
+#         echo "unsupported distro: ${ID}-${VERSION_ID}"
+#         exit 1;;
+# esac
 
 # Check ostree_key permissions
 KEY_PERMISSION_PRE=$(stat -L -c "%a %G %U" key/ostree_key | grep -oP '\d+' | head -n 1)
@@ -93,8 +93,8 @@ greenprint "Start httpd service"
 sudo systemctl enable --now httpd.service
 
 # Start osbuild-composer.socket
-greenprint "Start osbuild-composer.socket"
-sudo systemctl enable --now osbuild-composer.socket
+# greenprint "Start osbuild-composer.socket"
+# sudo systemctl enable --now osbuild-composer.socket
 
 # Start firewalld
 greenprint "Start firewalld"
@@ -153,7 +153,7 @@ if [[ $(sudo virsh net-info integration | grep 'Active' | awk '{print $2}') == '
 fi
 
 # Basic weldr API status checking
-sudo composer-cli status show
+# sudo composer-cli status show
 
 # Simulate a third party repo here
 sudo mkdir -p /var/www/html/packages
@@ -201,10 +201,10 @@ sudo dnf info \
     fdo-admin-cli
 
 # Source checking
-sudo composer-cli sources list
-for SOURCE in $(sudo composer-cli sources list); do
-    sudo composer-cli sources info "$SOURCE"
-done
+# sudo composer-cli sources list
+# for SOURCE in $(sudo composer-cli sources list); do
+#     sudo composer-cli sources info "$SOURCE"
+# done
 
 # In case port 8081 is already in use
 sudo dnf install -y lsof
