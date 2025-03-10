@@ -3,12 +3,6 @@ service_info:
   initial_user: null
   files: null
   commands: null
-  diskencryption_clevis:
-    - disk_label: /dev/vda4
-      reencrypt: true
-      binding:
-        pin: tpm2
-        config: '{}'
   additional_serviceinfo: null
 bind: 0.0.0.0:8083
 service_info_auth_token: 2IOtlXsSqfcGjnhBLZjPiHIteskzZEW3lncRzpEmgqI=
