@@ -43,6 +43,13 @@ cleanup() {
     # Remove container images
     sudo podman rmi -a -f
 
+    # Remove generated files if present
+    [[ -f "Containerfile" ]] && rm -f "Containerfile"
+    [[ -f "config.json" ]] && rm -f "config.json"
+    if [[ -n "${OCI_ARCHIVE:-}" && -f "${OCI_ARCHIVE}" ]]; then
+        sudo rm -f "${OCI_ARCHIVE}"
+    fi
+
     exit "${exit_code}"
 }
 
@@ -156,6 +163,27 @@ OCI_ARCHIVE_TAG="${VERSION_ID}"
 
 log_info "Copying container image into storage with a controlled tag"
 sudo skopeo copy oci-archive:"${OCI_ARCHIVE}" containers-storage:"${CONTAINER_IMG_NAME}:${OCI_ARCHIVE_TAG}"
+
+log_info "Preparing journald persistent workaround..."
+tee journald-persistent.conf > /dev/null << EOF
+[Journal]
+Storage=persistent
+EOF
+
+tee journal-persistent.tmpfiles.conf > /dev/null << EOF
+d /var/log/journal 2755 root systemd-journal - -
+EOF
+
+log_info "Preparing Containerfile"
+tee Containerfile > /dev/null << STOPHERE
+FROM ${CONTAINER_IMG_NAME}:${OCI_ARCHIVE_TAG}
+RUN install -d /usr/lib/systemd/journald.conf.d /usr/lib/tmpfiles.d
+COPY journald-persistent.conf /usr/lib/systemd/journald.conf.d/10-persistent.conf
+COPY journal-persistent.tmpfiles.conf /usr/lib/tmpfiles.d/journal-persistent.conf
+STOPHERE
+
+log_info "Building container image"
+sudo podman build -f Containerfile -t "${CONTAINER_IMG_NAME}:${OCI_ARCHIVE_TAG}"
 
 log_info "Preparing bib configuration file..."
 tee config.json > /dev/null << EOF
