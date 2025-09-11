@@ -157,6 +157,21 @@ OCI_ARCHIVE_TAG="${VERSION_ID}"
 log_info "Copying container image into storage with a controlled tag"
 sudo skopeo copy oci-archive:"${OCI_ARCHIVE}" containers-storage:"${CONTAINER_IMG_NAME}:${OCI_ARCHIVE_TAG}"
 
+log_info "Preparing journald persistent workaround..."
+tee journald.conf > /dev/null << EOF
+[Journal]
+Storage=persistent
+EOF
+
+log_info "Preparing Containerfile"
+tee Containerfile > /dev/null << STOPHERE
+FROM ${CONTAINER_IMG_NAME}:${OCI_ARCHIVE_TAG}
+COPY journald.conf /etc/systemd/journald.conf
+STOPHERE
+
+log_info "Building container image"
+sudo podman build -f Containerfile -t "${CONTAINER_IMG_NAME}:${OCI_ARCHIVE_TAG}"
+
 log_info "Preparing bib configuration file..."
 tee config.json > /dev/null << EOF
 {
