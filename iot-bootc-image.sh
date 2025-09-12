@@ -157,6 +157,21 @@ OCI_ARCHIVE_TAG="${VERSION_ID}"
 log_info "Copying container image into storage with a controlled tag"
 sudo skopeo copy oci-archive:"${OCI_ARCHIVE}" containers-storage:"${CONTAINER_IMG_NAME}:${OCI_ARCHIVE_TAG}"
 
+log_info "Preparing journald persistent workaround..."
+sudo tee journald.conf > /dev/null << EOF
+[Journal]
+Storage=persistent
+EOF
+
+log_info "Preparing Containerfile"
+tee Containerfile > /dev/null << STOPHERE
+FROM ${CONTAINER_IMG_NAME}:${OCI_ARCHIVE_TAG}
+COPY journald.conf /etc/systemd/
+STOPHERE
+
+log_info "Building container image"
+sudo podman build  --retry=5 --retry-delay=10s -t "fedora-test:${OCI_ARCHIVE_TAG}" -f Containerfile .
+
 log_info "Preparing bib configuration file..."
 tee config.json > /dev/null << EOF
 {
@@ -196,8 +211,7 @@ sudo podman run \
      --config /config.json \
      --rootfs xfs \
      --use-librepo=true \
-     "${CONTAINER_IMG_NAME}:${OCI_ARCHIVE_TAG}"
-     # "${QUAY_REPO_TAG}"
+     "localhost/fedora-test:${OCI_ARCHIVE_TAG}"
 
 log_info "Starting VM installation..."
 sudo mv ./output/qcow2/disk.qcow2 /var/lib/libvirt/images/"${TEST_UUID}"-disk.qcow2
