@@ -86,10 +86,33 @@ Test suites in scenario:
 4. [`ostree-simplified-installer.sh`](ostree-simplified-installer.sh) and [`arm-simplified.sh`](arm-simplified.sh): edge-simplified-installer(ISO) image types test on RHEL 8.x, RHEL 9.x, CentOS Stream 8, and CentOS Stream 9
 5. [`arm-rebase.sh`](arm-rebase.sh): Different ostree ref rebase test on RHEL 8.x and CentOS Stream 8
 6. [`ostree-8-to-9.sh`](ostree-8-to-9.sh): RHEL 8/CentOS Stream 8 Edge system upgrade to RHEL 9/CentOS Stream 9 Edge system test
-6. [`ostree-9-to-9.sh`](ostree-9-to-9.sh): RHEL 9/CentOS Stream 9 Edge system upgrade and rebase to RHEL 9/CentOS Stream 9 Edge system test
-7. [`minimal-raw.sh`](minimal-raw.sh) and [`arm-minimal.sh`](arm-minimal.sh): RPM based system test (Not ostree)
-8. [`ostree-ignition.sh`](ostree-ignition.sh) and [`arm-ignition.sh`](arm-ignition.sh): Ignition test for simplified installer and raw image
-8. [`ostree-ami-image.sh`](ostree-ami-image.sh): AWS ec2 instance image test
+7. [`ostree-9-to-9.sh`](ostree-9-to-9.sh): RHEL 9/CentOS Stream 9 Edge system upgrade and rebase to RHEL 9/CentOS Stream 9 Edge system test
+8. [`minimal-raw.sh`](minimal-raw.sh) and [`arm-minimal.sh`](arm-minimal.sh): RPM based system test (Not ostree)
+9. [`ostree-ignition.sh`](ostree-ignition.sh) and [`arm-ignition.sh`](arm-ignition.sh): Ignition test for simplified installer and raw image
+10. [`ostree-ami-image.sh`](ostree-ami-image.sh): AWS ec2 instance image test
+11. [`ostree-fdo-aio.sh`](ostree-fdo-aio.sh): FDO All-In-One service test
+12. [`ostree-fdo-db.sh`](ostree-fdo-db.sh): FDO with database backend test
+13. [`ostree-fdo-container.sh`](ostree-fdo-container.sh): FDO container image test
+14. [`ostree-pulp.sh`](ostree-pulp.sh): Pulp content management integration test
+15. [`ostree-vsphere.sh`](ostree-vsphere.sh): vSphere image deployment test
+16. [`ostree-iot-qcow2.sh`](ostree-iot-qcow2.sh): Fedora IoT qcow2 image test
+17. [`iot-installer.sh`](iot-installer.sh): Fedora IoT installer ISO test
+18. [`iot-simplified-installer.sh`](iot-simplified-installer.sh): Fedora IoT simplified installer test
+19. [`iot-raw-image.sh`](iot-raw-image.sh): Fedora IoT raw image test
+20. [`iot-bootc-image.sh`](iot-bootc-image.sh): Fedora IoT bootc (bootable container) image test
+
+### Setup Scripts
+
+Before running tests, the environment must be set up:
+
+- [`setup.sh`](setup.sh): Sets up test environment for RHEL Edge tests
+  - Installs required packages (osbuild, composer-cli, podman, etc.)
+  - Configures repositories based on OS version
+  - Sets up HTTP server for image serving
+  - **Required:** `DOWNLOAD_NODE` environment variable
+
+- [`iot-setup.sh`](iot-setup.sh): Sets up test environment for Fedora IoT tests
+  - Similar to setup.sh but configured for Fedora IoT
 
 ### Test environment
 
@@ -141,19 +164,88 @@ To run RHEL for Edge test on ARM server, a bare metal ARM server is required.
 
 ### Test Configuration
 
-You can set these environment variables to run test
+You can set these environment variables to run tests:
 
-    QUAY_USERNAME      quay.io username
-                           Used to test pushing Edge OCI-archive image to quay.io
-    QUAY_PASSWORD      quay.io password
-                           Used to test pushing Edge OCI-archive image to quay.io
-    DOCKERHUB_USERNAME      Docker hub account username
-                           Used to test pushing Edge OCI-archive image to Docker hub
-    DOCKERHUB_PASSWORD      Docker hub account password
-                           Used to test pushing Edge OCI-archive image to Docker hub
-    OCP4_TOKEN         Edit-able SA token on PSI Openshift 4
-                           Deploy edge-container on PSI OCP4
-    DOWNLOAD_NODE      RHEL nightly compose download URL
+#### Required Variables
+
+- `DOWNLOAD_NODE` - RHEL nightly compose download URL
+  - **Required for:** All test scripts
+  - **Example:** `DOWNLOAD_NODE="download.eng.bos.redhat.com"`
+
+#### Optional Variables (for specific test scenarios)
+
+- `QUAY_USERNAME` - quay.io username
+  - **Used by:** `ostree-ng.sh`, `iot-bootc-image.sh`
+  - **Purpose:** Test pushing Edge OCI-archive image to quay.io
+
+- `QUAY_PASSWORD` - quay.io password
+  - **Used by:** `ostree-ng.sh`, `iot-bootc-image.sh`
+
+- `DOCKERHUB_USERNAME` - Docker hub account username
+  - **Used by:** `ostree-raw-image.sh`, `tools/arm-raw.sh`, `tools/edge-raw.sh`
+  - **Purpose:** Test pushing Edge OCI-archive image to Docker hub
+
+- `DOCKERHUB_PASSWORD` - Docker hub account password
+  - **Used by:** `ostree-raw-image.sh`, `tools/arm-raw.sh`, `tools/edge-raw.sh`
+
+- `TEST_CASE` - Test case identifier for tmt execution
+  - **Used by:** `tmt/tests/test.sh` dispatcher
+  - **Values:** See TMT execution section
+
+- `ARTIFACTS` - Directory for test artifacts (default: `/tmp/artifacts`)
+  - **Used by:** Various scripts for storing test outputs
+
+#### AWS Variables (for cleanup scripts)
+
+- `AWS_DEFAULT_REGION` - AWS region for cleanup operations
+- AWS credentials via AWS CLI configuration
+  - **Used by:** `tools/aws-ami-cleanup.sh`
+
+### Utility Scripts
+
+#### Cleanup Scripts
+
+- [`tools/aws-ami-cleanup.sh`](tools/aws-ami-cleanup.sh): Cleanup idle AWS EC2 resources
+  - Removes old instances, snapshots, images, buckets, and keypairs
+  - **Required:** AWS credentials and `AWS_DEFAULT_REGION`
+
+- [`tools/vsphere-cleanup.py`](tools/vsphere-cleanup.py): Cleanup vSphere resources
+  - **Required:** vSphere credentials
+
+### Running Tests with TMT
+
+Tests can be executed via Test Management Tool (tmt), which is the primary method used in CI:
+
+```bash
+# Run all edge tests
+tmt run -a
+
+# Run specific test plan
+tmt run plan -n edge-test
+tmt run plan -n iot-test
+
+# Run specific test case
+TEST_CASE=edge-commit tmt run
+```
+
+The `TEST_CASE` environment variable determines which script is executed:
+   - `edge-commit`, `edge-installer`, `edge-raw-image`, `edge-simplified-installer`, etc.
+   - `iot-installer`, `iot-simplified-installer`, `iot-raw-image`, `iot-bootc`
+
+## Test Architecture
+
+### Script Organization
+
+- **Root directory scripts:** x86_64 tests for RHEL Edge and Fedora IoT
+- **tools/ directory:** ARM64 tests and utility scripts
+- **tmt/ directory:** Test Management Tool definitions and plans
+
+### Test Categories
+
+1. **Edge Tests** (`ostree-*.sh`): RHEL for Edge image tests
+2. **IoT Tests** (`iot-*.sh`): Fedora IoT image tests
+3. **ARM Tests** (`tools/arm-*.sh`): ARM64 architecture tests
+4. **Utility Scripts** (`tools/*.sh`, `tools/*.py`): Helper and cleanup scripts
 
 ## Contact us
 
