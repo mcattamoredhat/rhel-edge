@@ -47,24 +47,22 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    container:
+      # Pin to specific Fedora version for stability
+      # Change to fedora:latest or newer version (e.g., fedora:41) as needed
+      # Available versions: fedora:38, fedora:39, fedora:40, fedora:41, fedora:rawhide
+      image: fedora:40
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
       - name: Install tmt and Polarion exporter
         run: |
-          python -m pip install --upgrade pip
-          # Install tmt
-          pip install tmt
-          # tmt report polarion export plugin
-          pip install tmt-polarion pylero
+          # Update system and install required packages
+          dnf -y update
+          dnf -y install tmt+report-polarion git
 
       - name: Configure pylero
         env:
